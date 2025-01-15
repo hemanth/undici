@@ -1,7 +1,8 @@
 // Based on https://github.com/octet-stream/form-data/blob/2d0f0dc371517444ce1f22cdde13f51995d0953a/lib/FormData.ts (MIT)
 /// <reference types="node" />
 
-import { File } from './file'
+import { File } from 'buffer'
+import { SpecIterableIterator } from './fetch'
 
 /**
  * A `string` or `File` that represents a single value from a set of `FormData` key-value pairs.
@@ -23,7 +24,7 @@ export declare class FormData {
     or [`File`](https://developer.mozilla.org/en-US/docs/Web/API/File). If none of these are specified the value is converted to a string.
    * @param fileName The filename reported to the server, when a Blob or File is passed as the second parameter. The default filename for Blob objects is "blob". The default filename for File objects is the file's filename.
    */
-  append(name: string, value: unknown, fileName?: string): void
+  append (name: string, value: unknown, fileName?: string): void
 
   /**
    * Set a new value for an existing key inside FormData,
@@ -35,7 +36,7 @@ export declare class FormData {
    * @param fileName The filename reported to the server, when a Blob or File is passed as the second parameter. The default filename for Blob objects is "blob". The default filename for File objects is the file's filename.
    *
    */
-  set(name: string, value: unknown, fileName?: string): void
+  set (name: string, value: unknown, fileName?: string): void
 
   /**
    * Returns the first value associated with a given key from within a `FormData` object.
@@ -45,7 +46,7 @@ export declare class FormData {
    *
    * @returns A `FormDataEntryValue` containing the value. If the key doesn't exist, the method returns null.
    */
-  get(name: string): FormDataEntryValue | null
+  get (name: string): FormDataEntryValue | null
 
   /**
    * Returns all the values associated with a given key from within a `FormData` object.
@@ -54,7 +55,7 @@ export declare class FormData {
    *
    * @returns An array of `FormDataEntryValue` whose key matches the value passed in the `name` parameter. If the key doesn't exist, the method returns an empty list.
    */
-  getAll(name: string): FormDataEntryValue[]
+  getAll (name: string): FormDataEntryValue[]
 
   /**
    * Returns a boolean stating whether a `FormData` object contains a certain key.
@@ -63,42 +64,45 @@ export declare class FormData {
    *
    * @return A boolean value.
    */
-  has(name: string): boolean
+  has (name: string): boolean
 
   /**
    * Deletes a key and its value(s) from a `FormData` object.
    *
    * @param name The name of the key you want to delete.
    */
-  delete(name: string): void
+  delete (name: string): void
+
+  /**
+   * Executes given callback function for each field of the FormData instance
+   */
+  forEach: (
+    callbackfn: (value: FormDataEntryValue, key: string, iterable: FormData) => void,
+    thisArg?: unknown
+  ) => void
 
   /**
    * Returns an [`iterator`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through all keys contained in this `FormData` object.
    * Each key is a `string`.
    */
-  keys(): Generator<string>
-
-  /**
-   * Returns an [`iterator`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through the `FormData` key/value pairs.
-   * The key of each pair is a string; the value is a [`FormDataValue`](https://developer.mozilla.org/en-US/docs/Web/API/FormDataEntryValue).
-   */
-  entries(): Generator<[string, FormDataEntryValue]>
+  keys: () => SpecIterableIterator<string>
 
   /**
    * Returns an [`iterator`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through all values contained in this object `FormData` object.
    * Each value is a [`FormDataValue`](https://developer.mozilla.org/en-US/docs/Web/API/FormDataEntryValue).
    */
-  values(): Generator<FormDataEntryValue>
+  values: () => SpecIterableIterator<FormDataEntryValue>
+
+  /**
+   * Returns an [`iterator`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through the `FormData` key/value pairs.
+   * The key of each pair is a string; the value is a [`FormDataValue`](https://developer.mozilla.org/en-US/docs/Web/API/FormDataEntryValue).
+   */
+  entries: () => SpecIterableIterator<[string, FormDataEntryValue]>
 
   /**
    * An alias for FormData#entries()
    */
-  [Symbol.iterator](): Generator<[string, FormDataEntryValue], void>
-
-  /**
-   * Executes given callback function for each field of the FormData instance
-   */
-  forEach(callback: (value: FormDataEntryValue, key: string, formData: FormData) => void, thisArg?: unknown): void
+  [Symbol.iterator]: () => SpecIterableIterator<[string, FormDataEntryValue]>
 
   readonly [Symbol.toStringTag]: string
 }

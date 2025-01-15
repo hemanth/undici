@@ -1,79 +1,74 @@
 'use strict'
 
-const { test } = require('tap')
+const { tspl } = require('@matteo.collina/tspl')
+const { describe, test, after } = require('node:test')
 const { MockInterceptor, MockScope } = require('../lib/mock/mock-interceptor')
 const MockAgent = require('../lib/mock/mock-agent')
 const { kDispatchKey } = require('../lib/mock/mock-symbols')
 const { InvalidArgumentError } = require('../lib/core/errors')
+const { fetch } = require('../lib/web/fetch/index')
 
-test('MockInterceptor - path', t => {
-  t.plan(1)
-  t.test('should remove hash fragment from paths', t => {
-    t.plan(1)
+describe('MockInterceptor - path', () => {
+  test('should remove hash fragment from paths', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '#foobar',
       method: ''
     }, [])
-    t.equal(mockInterceptor[kDispatchKey].path, '')
+    t.strictEqual(mockInterceptor[kDispatchKey].path, '')
   })
 })
 
-test('MockInterceptor - reply', t => {
-  t.plan(2)
-
-  t.test('should return MockScope', t => {
-    t.plan(1)
+describe('MockInterceptor - reply', () => {
+  test('should return MockScope', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.reply(200, 'hello')
-    t.type(result, MockScope)
+    t.ok(result instanceof MockScope)
   })
 
-  t.test('should error if passed options invalid', t => {
-    t.plan(3)
+  test('should error if passed options invalid', t => {
+    t = tspl(t, { plan: 2 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     t.throws(() => mockInterceptor.reply(), new InvalidArgumentError('statusCode must be defined'))
-    t.throws(() => mockInterceptor.reply(200), new InvalidArgumentError('data must be defined'))
     t.throws(() => mockInterceptor.reply(200, '', 'hello'), new InvalidArgumentError('responseOptions must be an object'))
   })
 })
 
-test('MockInterceptor - reply callback', t => {
-  t.plan(2)
-
-  t.test('should return MockScope', t => {
-    t.plan(1)
+describe('MockInterceptor - reply callback', () => {
+  test('should return MockScope', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.reply(200, () => 'hello')
-    t.type(result, MockScope)
+    t.ok(result instanceof MockScope)
   })
 
-  t.test('should error if passed options invalid', t => {
-    t.plan(2)
+  test('should error if passed options invalid', t => {
+    t = tspl(t, { plan: 3 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     t.throws(() => mockInterceptor.reply(), new InvalidArgumentError('statusCode must be defined'))
-    t.throws(() => mockInterceptor.reply(200, () => {}, 'hello'), new InvalidArgumentError('responseOptions must be an object'))
+    t.throws(() => mockInterceptor.reply(200, () => { }, 'hello'), new InvalidArgumentError('responseOptions must be an object'))
+    t.throws(() => mockInterceptor.reply(200, () => { }, null), new InvalidArgumentError('responseOptions must be an object'))
   })
 })
 
-test('MockInterceptor - reply options callback', t => {
-  t.plan(2)
-
-  t.test('should return MockScope', t => {
-    t.plan(2)
+describe('MockInterceptor - reply options callback', () => {
+  test('should return MockScope', t => {
+    t = tspl(t, { plan: 2 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
@@ -83,13 +78,13 @@ test('MockInterceptor - reply options callback', t => {
       statusCode: 200,
       data: 'hello'
     }))
-    t.type(result, MockScope)
+    t.ok(result instanceof MockScope)
 
     // Test parameters
 
     const baseUrl = 'http://localhost:9999'
     const mockAgent = new MockAgent()
-    t.teardown(mockAgent.close.bind(mockAgent))
+    after(() => mockAgent.close())
 
     const mockPool = mockAgent.get(baseUrl)
 
@@ -97,7 +92,7 @@ test('MockInterceptor - reply options callback', t => {
       path: '/test',
       method: 'GET'
     }).reply((options) => {
-      t.strictSame(options, { path: '/test', method: 'GET', headers: { foo: 'bar' } })
+      t.deepStrictEqual(options, { path: '/test', method: 'GET', headers: { foo: 'bar' } })
       return { statusCode: 200, data: 'hello' }
     })
 
@@ -106,32 +101,30 @@ test('MockInterceptor - reply options callback', t => {
       method: 'GET',
       headers: { foo: 'bar' }
     }, {
-      onHeaders: () => {},
-      onData: () => {},
-      onComplete: () => {}
+      onHeaders: () => { },
+      onData: () => { },
+      onComplete: () => { }
     })
   })
 
-  t.test('should error if passed options invalid', async (t) => {
-    t.plan(4)
+  test('should error if passed options invalid', async (t) => {
+    t = tspl(t, { plan: 4 })
 
     const baseUrl = 'http://localhost:9999'
     const mockAgent = new MockAgent()
-    t.teardown(mockAgent.close.bind(mockAgent))
+    after(() => mockAgent.close())
 
     const mockPool = mockAgent.get(baseUrl)
 
     mockPool.intercept({
-      path: '/test',
+      path: '/test-return-undefined',
       method: 'GET'
-    }).reply(() => {})
+    }).reply(() => { })
 
     mockPool.intercept({
-      path: '/test2',
+      path: '/test-return-null',
       method: 'GET'
-    }).reply(() => ({
-      statusCode: 200
-    }))
+    }).reply(() => { return null })
 
     mockPool.intercept({
       path: '/test3',
@@ -151,58 +144,56 @@ test('MockInterceptor - reply options callback', t => {
     }))
 
     t.throws(() => mockPool.dispatch({
-      path: '/test',
+      path: '/test-return-undefined',
       method: 'GET'
     }, {
-      onHeaders: () => {},
-      onData: () => {},
-      onComplete: () => {}
+      onHeaders: () => { },
+      onData: () => { },
+      onComplete: () => { }
     }), new InvalidArgumentError('reply options callback must return an object'))
 
     t.throws(() => mockPool.dispatch({
-      path: '/test2',
+      path: '/test-return-null',
       method: 'GET'
     }, {
-      onHeaders: () => {},
-      onData: () => {},
-      onComplete: () => {}
-    }), new InvalidArgumentError('data must be defined'))
+      onHeaders: () => { },
+      onData: () => { },
+      onComplete: () => { }
+    }), new InvalidArgumentError('reply options callback must return an object'))
 
     t.throws(() => mockPool.dispatch({
       path: '/test3',
       method: 'GET'
     }, {
-      onHeaders: () => {},
-      onData: () => {},
-      onComplete: () => {}
+      onHeaders: () => { },
+      onData: () => { },
+      onComplete: () => { }
     }), new InvalidArgumentError('responseOptions must be an object'))
 
     t.throws(() => mockPool.dispatch({
       path: '/test4',
       method: 'GET'
     }, {
-      onHeaders: () => {},
-      onData: () => {},
-      onComplete: () => {}
+      onHeaders: () => { },
+      onData: () => { },
+      onComplete: () => { }
     }), new InvalidArgumentError('statusCode must be defined'))
   })
 })
 
-test('MockInterceptor - replyWithError', t => {
-  t.plan(2)
-
-  t.test('should return MockScope', t => {
-    t.plan(1)
+describe('MockInterceptor - replyWithError', () => {
+  test('should return MockScope', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.replyWithError(new Error('kaboom'))
-    t.type(result, MockScope)
+    t.ok(result instanceof MockScope)
   })
 
-  t.test('should error if passed options invalid', t => {
-    t.plan(1)
+  test('should error if passed options invalid', t => {
+    t = tspl(t, { plan: 1 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
@@ -212,21 +203,19 @@ test('MockInterceptor - replyWithError', t => {
   })
 })
 
-test('MockInterceptor - defaultReplyHeaders', t => {
-  t.plan(2)
-
-  t.test('should return MockInterceptor', t => {
-    t.plan(1)
+describe('MockInterceptor - defaultReplyHeaders', () => {
+  test('should return MockInterceptor', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.defaultReplyHeaders({})
-    t.type(result, MockInterceptor)
+    t.ok(result instanceof MockInterceptor)
   })
 
-  t.test('should error if passed options invalid', t => {
-    t.plan(1)
+  test('should error if passed options invalid', t => {
+    t = tspl(t, { plan: 1 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
@@ -236,21 +225,19 @@ test('MockInterceptor - defaultReplyHeaders', t => {
   })
 })
 
-test('MockInterceptor - defaultReplyTrailers', t => {
-  t.plan(2)
-
-  t.test('should return MockInterceptor', t => {
-    t.plan(1)
+describe('MockInterceptor - defaultReplyTrailers', () => {
+  test('should return MockInterceptor', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.defaultReplyTrailers({})
-    t.type(result, MockInterceptor)
+    t.ok(result instanceof MockInterceptor)
   })
 
-  t.test('should error if passed options invalid', t => {
-    t.plan(1)
+  test('should error if passed options invalid', t => {
+    t = tspl(t, { plan: 1 })
 
     const mockInterceptor = new MockInterceptor({
       path: '',
@@ -260,16 +247,135 @@ test('MockInterceptor - defaultReplyTrailers', t => {
   })
 })
 
-test('MockInterceptor - replyContentLength', t => {
-  t.plan(1)
-
-  t.test('should return MockInterceptor', t => {
-    t.plan(1)
+describe('MockInterceptor - replyContentLength', () => {
+  test('should return MockInterceptor', t => {
+    t = tspl(t, { plan: 1 })
     const mockInterceptor = new MockInterceptor({
       path: '',
       method: ''
     }, [])
     const result = mockInterceptor.defaultReplyTrailers({})
-    t.type(result, MockInterceptor)
+    t.ok(result instanceof MockInterceptor)
+  })
+})
+
+describe('https://github.com/nodejs/undici/issues/3649', () => {
+  [
+    ['/api/some-path', '/api/some-path'],
+    ['/api/some-path/', '/api/some-path'],
+    ['/api/some-path', '/api/some-path/'],
+    ['/api/some-path/', '/api/some-path/'],
+    ['/api/some-path////', '/api/some-path//'],
+    ['', ''],
+    ['/', ''],
+    ['', '/'],
+    ['/', '/']
+  ].forEach(([interceptPath, fetchedPath], index) => {
+    test(`MockAgent should match with or without trailing slash by setting ignoreTrailingSlash as MockAgent option /${index}`, async (t) => {
+      t = tspl(t, { plan: 1 })
+
+      const mockAgent = new MockAgent({ ignoreTrailingSlash: true })
+      mockAgent.disableNetConnect()
+      mockAgent
+        .get('https://localhost')
+        .intercept({ path: interceptPath }).reply(200, { ok: true })
+
+      const res = await fetch(new URL(fetchedPath, 'https://localhost'), { dispatcher: mockAgent })
+
+      t.deepStrictEqual(await res.json(), { ok: true })
+    })
+
+    test(`MockAgent should match with or without trailing slash by setting ignoreTrailingSlash as intercept option /${index}`, async (t) => {
+      t = tspl(t, { plan: 1 })
+
+      const mockAgent = new MockAgent()
+      mockAgent.disableNetConnect()
+      mockAgent
+        .get('https://localhost')
+        .intercept({ path: interceptPath, ignoreTrailingSlash: true }).reply(200, { ok: true })
+
+      const res = await fetch(new URL(fetchedPath, 'https://localhost'), { dispatcher: mockAgent })
+
+      t.deepStrictEqual(await res.json(), { ok: true })
+    })
+
+    if (
+      (interceptPath === fetchedPath && (interceptPath !== '' && fetchedPath !== '')) ||
+      (interceptPath === '/' && fetchedPath === '')
+    ) {
+      test(`MockAgent should should match on strict equal cases of paths when ignoreTrailingSlash is not set /${index}`, async (t) => {
+        t = tspl(t, { plan: 1 })
+
+        const mockAgent = new MockAgent()
+        mockAgent.disableNetConnect()
+        mockAgent
+          .get('https://localhost')
+          .intercept({ path: interceptPath }).reply(200, { ok: true })
+
+        const res = await fetch(new URL(fetchedPath, 'https://localhost'), { dispatcher: mockAgent })
+
+        t.deepStrictEqual(await res.json(), { ok: true })
+      })
+    } else {
+      test(`MockAgent should should reject on not strict equal cases of paths when ignoreTrailingSlash is not set /${index}`, async (t) => {
+        t = tspl(t, { plan: 1 })
+
+        const mockAgent = new MockAgent()
+        mockAgent.disableNetConnect()
+        mockAgent
+          .get('https://localhost')
+          .intercept({ path: interceptPath }).reply(200, { ok: true })
+
+        t.rejects(fetch(new URL(fetchedPath, 'https://localhost'), { dispatcher: mockAgent }))
+      })
+    }
+  })
+})
+
+describe('MockInterceptor - different payloads', () => {
+  [
+    // Buffer
+    ['arrayBuffer', 'ArrayBuffer', 'ArrayBuffer', new TextEncoder().encode('{"test":true}').buffer, new TextEncoder().encode('{"test":true}').buffer],
+    ['json', 'ArrayBuffer', 'Object', new TextEncoder().encode('{"test":true}').buffer, { test: true }],
+    ['bytes', 'ArrayBuffer', 'Uint8Array', new TextEncoder().encode('{"test":true}').buffer, new TextEncoder().encode('{"test":true}')],
+    ['text', 'ArrayBuffer', 'string', new TextEncoder().encode('{"test":true}').buffer, '{"test":true}'],
+
+    // Buffer
+    ['arrayBuffer', 'Buffer', 'ArrayBuffer', Buffer.from('{"test":true}'), new TextEncoder().encode('{"test":true}').buffer],
+    ['json', 'Buffer', 'Object', Buffer.from('{"test":true}'), { test: true }],
+    ['bytes', 'Buffer', 'Uint8Array', Buffer.from('{"test":true}'), new TextEncoder().encode('{"test":true}')],
+    ['text', 'Buffer', 'string', Buffer.from('{"test":true}'), '{"test":true}'],
+
+    // Uint8Array
+    ['arrayBuffer', 'Uint8Array', 'ArrayBuffer', new TextEncoder().encode('{"test":true}'), new TextEncoder().encode('{"test":true}').buffer],
+    ['json', 'Uint8Array', 'Object', new TextEncoder().encode('{"test":true}'), { test: true }],
+    ['bytes', 'Uint8Array', 'Uint8Array', new TextEncoder().encode('{"test":true}'), new TextEncoder().encode('{"test":true}')],
+    ['text', 'Uint8Array', 'string', new TextEncoder().encode('{"test":true}'), '{"test":true}'],
+
+    // string
+    ['arrayBuffer', 'string', 'ArrayBuffer', '{"test":true}', new TextEncoder().encode('{"test":true}').buffer],
+    ['json', 'string', 'Object', '{"test":true}', { test: true }],
+    ['bytes', 'string', 'Uint8Array', '{"test":true}', new TextEncoder().encode('{"test":true}')],
+    ['text', 'string', 'string', '{"test":true}', '{"test":true}'],
+
+    // object
+    ['arrayBuffer', 'Object', 'ArrayBuffer', { test: true }, new TextEncoder().encode('{"test":true}').buffer],
+    ['json', 'Object', 'Object', { test: true }, { test: true }],
+    ['bytes', 'Object', 'Uint8Array', { test: true }, new TextEncoder().encode('{"test":true}')],
+    ['text', 'Object', 'string', { test: true }, '{"test":true}']
+  ].forEach(([method, inputType, outputType, input, output]) => {
+    test(`${inputType} will be returned as ${outputType} via ${method}()`, async (t) => {
+      t = tspl(t, { plan: 1 })
+
+      const mockAgent = new MockAgent()
+      mockAgent.disableNetConnect()
+      mockAgent
+        .get('https://localhost')
+        .intercept({ path: '/' }).reply(200, input)
+
+      const response = await fetch('https://localhost', { dispatcher: mockAgent })
+
+      t.deepStrictEqual(await response[method](), output)
+    })
   })
 })

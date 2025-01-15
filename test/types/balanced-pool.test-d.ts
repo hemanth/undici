@@ -10,6 +10,7 @@ expectAssignable<BalancedPool>(new BalancedPool('', { factory: () => new Dispatc
 expectAssignable<BalancedPool>(new BalancedPool('', { factory: (origin, opts) => new Client(origin, opts) }))
 expectAssignable<BalancedPool>(new BalancedPool('', { connections: 1 }))
 expectAssignable<BalancedPool>(new BalancedPool(['http://localhost:4242', 'http://www.nodejs.org']))
+expectAssignable<BalancedPool>(new BalancedPool([new URL('http://localhost:4242'), new URL('http://www.nodejs.org')], {}))
 
 {
   const pool = new BalancedPool('', {})
@@ -21,8 +22,9 @@ expectAssignable<BalancedPool>(new BalancedPool(['http://localhost:4242', 'http:
   // upstreams
   expectAssignable<BalancedPool>(pool.addUpstream('http://www.nodejs.org'))
   expectAssignable<BalancedPool>(pool.removeUpstream('http://www.nodejs.org'))
+  expectAssignable<BalancedPool>(pool.addUpstream(new URL('http://www.nodejs.org')))
+  expectAssignable<BalancedPool>(pool.removeUpstream(new URL('http://www.nodejs.org')))
   expectAssignable<string[]>(pool.upstreams)
-
 
   // request
   expectAssignable<Promise<Dispatcher.ResponseData>>(pool.request({ origin: '', path: '', method: 'GET' }))

@@ -1,39 +1,37 @@
 'use strict'
 
-const { test } = require('tap')
+const { tspl } = require('@matteo.collina/tspl')
+const { test, after } = require('node:test')
 const { Client } = require('..')
-const { createServer } = require('http')
-const errors = require('../lib/core/errors')
+const { createServer } = require('node:http')
 
-test('response trailers missing', (t) => {
-  t.plan(2)
+test('response trailers missing is OK', async (t) => {
+  t = tspl(t, { plan: 1 })
 
   const server = createServer((req, res) => {
     res.writeHead(200, {
       Trailer: 'content-length'
     })
-    res.end()
+    res.end('response')
   })
-  t.teardown(server.close.bind(server))
-  server.listen(0, () => {
+  after(() => server.close())
+  server.listen(0, async () => {
     const client = new Client(`http://localhost:${server.address().port}`)
-    t.teardown(client.destroy.bind(client))
-
-    client.request({
+    after(() => client.destroy())
+    const { body } = await client.request({
       path: '/',
       method: 'GET',
       body: 'asd'
-    }, (err, data) => {
-      t.error(err)
-      data.body.on('error', (err) => {
-        t.type(err, errors.TrailerMismatchError)
-      })
     })
+
+    t.strictEqual(await body.text(), 'response')
   })
+
+  await t.completed
 })
 
-test('response trailers missing w trailers', (t) => {
-  t.plan(2)
+test('response trailers missing w trailers is OK', async (t) => {
+  t = tspl(t, { plan: 2 })
 
   const server = createServer((req, res) => {
     res.writeHead(200, {
@@ -42,22 +40,21 @@ test('response trailers missing w trailers', (t) => {
     res.addTrailers({
       asd: 'foo'
     })
-    res.end()
+    res.end('response')
   })
-  t.teardown(server.close.bind(server))
-  server.listen(0, () => {
+  after(() => server.close())
+  server.listen(0, async () => {
     const client = new Client(`http://localhost:${server.address().port}`)
-    t.teardown(client.destroy.bind(client))
-
-    client.request({
+    after(() => client.destroy())
+    const { body, trailers } = await client.request({
       path: '/',
       method: 'GET',
       body: 'asd'
-    }, (err, data) => {
-      t.error(err)
-      data.body.on('error', (err) => {
-        t.type(err, errors.TrailerMismatchError)
-      })
     })
+
+    t.strictEqual(await body.text(), 'response')
+    t.deepStrictEqual(trailers, { asd: 'foo' })
   })
+
+  await t.completed
 })

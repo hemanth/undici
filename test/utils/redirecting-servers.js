@@ -1,8 +1,22 @@
 'use strict'
 
-const { createServer } = require('http')
+const { createServer } = require('node:http')
+const { after } = require('node:test')
 
-function startServer (t, handler) {
+const isNode20 = process.version.startsWith('v20.')
+
+function close (server) {
+  return function () {
+    return new Promise(resolve => {
+      if (isNode20) {
+        server.closeAllConnections()
+      }
+      server.close(resolve)
+    })
+  }
+}
+
+function startServer (handler) {
   return new Promise(resolve => {
     const server = createServer(handler)
 
@@ -10,12 +24,12 @@ function startServer (t, handler) {
       resolve(`localhost:${server.address().port}`)
     })
 
-    t.teardown(server.close.bind(server))
+    after(close(server))
   })
 }
 
-async function startRedirectingServer (t) {
-  const server = await startServer(t, (req, res) => {
+async function startRedirectingServer () {
+  const server = await startServer((req, res) => {
     // Parse the path and normalize arguments
     let [code, redirections, query] = req.url
       .slice(1)
@@ -77,8 +91,8 @@ async function startRedirectingServer (t) {
   return server
 }
 
-async function startRedirectingWithBodyServer (t) {
-  const server = await startServer(t, (req, res) => {
+async function startRedirectingWithBodyServer () {
+  const server = await startServer((req, res) => {
     if (req.url === '/') {
       res.statusCode = 301
       res.setHeader('Connection', 'close')
@@ -94,8 +108,8 @@ async function startRedirectingWithBodyServer (t) {
   return server
 }
 
-function startRedirectingWithoutLocationServer (t) {
-  return startServer(t, (req, res) => {
+function startRedirectingWithoutLocationServer () {
+  return startServer((req, res) => {
     // Parse the path and normalize arguments
     let [code] = req.url
       .slice(1)
@@ -112,8 +126,8 @@ function startRedirectingWithoutLocationServer (t) {
   })
 }
 
-async function startRedirectingChainServers (t) {
-  const server1 = await startServer(t, (req, res) => {
+async function startRedirectingChainServers () {
+  const server1 = await startServer((req, res) => {
     if (req.url === '/') {
       res.statusCode = 301
       res.setHeader('Connection', 'close')
@@ -126,7 +140,7 @@ async function startRedirectingChainServers (t) {
     res.end(req.method)
   })
 
-  const server2 = await startServer(t, (req, res) => {
+  const server2 = await startServer((req, res) => {
     res.statusCode = 301
     res.setHeader('Connection', 'close')
 
@@ -139,7 +153,7 @@ async function startRedirectingChainServers (t) {
     res.end('')
   })
 
-  const server3 = await startServer(t, (req, res) => {
+  const server3 = await startServer((req, res) => {
     res.statusCode = 301
     res.setHeader('Connection', 'close')
 
@@ -155,8 +169,8 @@ async function startRedirectingChainServers (t) {
   return [server1, server2, server3]
 }
 
-async function startRedirectingWithAuthorization (t, authorization) {
-  const server1 = await startServer(t, (req, res) => {
+async function startRedirectingWithAuthorization (authorization) {
+  const server1 = await startServer((req, res) => {
     if (req.headers.authorization !== authorization) {
       res.statusCode = 403
       res.setHeader('Connection', 'close')
@@ -171,11 +185,72 @@ async function startRedirectingWithAuthorization (t, authorization) {
     res.end('')
   })
 
-  const server2 = await startServer(t, (req, res) => {
+  const server2 = await startServer((req, res) => {
     res.end(req.headers.authorization || '')
   })
 
   return [server1, server2]
+}
+
+async function startRedirectingWithCookie (cookie) {
+  const server1 = await startServer((req, res) => {
+    if (req.headers.cookie !== cookie) {
+      res.statusCode = 403
+      res.setHeader('Connection', 'close')
+      res.end('')
+      return
+    }
+
+    res.statusCode = 301
+    res.setHeader('Connection', 'close')
+
+    res.setHeader('Location', `http://${server2}`)
+    res.end('')
+  })
+
+  const server2 = await startServer((req, res) => {
+    res.end(req.headers.cookie || '')
+  })
+
+  return [server1, server2]
+}
+
+async function startRedirectingWithRelativePath (t) {
+  const server = await startServer((req, res) => {
+    res.setHeader('Connection', 'close')
+
+    if (req.url === '/') {
+      res.statusCode = 301
+      res.setHeader('Location', '/absolute/a')
+      res.end('')
+    } else if (req.url === '/absolute/a') {
+      res.statusCode = 301
+      res.setHeader('Location', 'b')
+      res.end('')
+    } else {
+      res.statusCode = 200
+      res.end(req.url)
+    }
+  })
+
+  return server
+}
+
+async function startRedirectingWithQueryParams (t) {
+  const server = await startServer((req, res) => {
+    if (req.url === '/?param1=first') {
+      res.statusCode = 301
+      res.setHeader('Connection', 'close')
+      res.setHeader('Location', `http://${server}/?param2=second`)
+      res.end('REDIRECT')
+      return
+    }
+
+    res.setHeader('Connection', 'close')
+    res.end('')
+  })
+
+  return server
 }
 
 module.exports = {
@@ -184,5 +259,8 @@ module.exports = {
   startRedirectingWithBodyServer,
   startRedirectingWithoutLocationServer,
   startRedirectingChainServers,
-  startRedirectingWithAuthorization
+  startRedirectingWithAuthorization,
+  startRedirectingWithCookie,
+  startRedirectingWithRelativePath,
+  startRedirectingWithQueryParams
 }
